@@ -29,7 +29,7 @@ following program::
 
     workbook.close()
 
-.. image:: _static/chart_working.png
+.. image:: _images/chart_working.png
 
 
 .. _chart_val_cat_axes:
@@ -71,6 +71,7 @@ This following sections detail the more complex options of the
     x_error_bars
     data_labels
     points
+    smooth
 
 
 .. _chart_series_option_marker:
@@ -96,7 +97,7 @@ The ``type`` property sets the type of marker that is used with a series::
         'marker': {'type': 'diamond'},
     })
 
-.. image:: _static/chart_marker1.png
+.. image:: _images/chart_marker1.png
    :scale: 75 %
 
 The following ``type`` properties can be set for ``marker`` formats in a chart.
@@ -144,7 +145,7 @@ Nested ``border`` and ``fill`` properties can also be set for a marker::
         },
     })
 
-.. image:: _static/chart_marker2.png
+.. image:: _images/chart_marker2.png
    :scale: 75 %
 
 .. _chart_series_option_trendline:
@@ -192,7 +193,7 @@ The default value is 2::
         },
     })
 
-.. image:: _static/chart_trendline1.png
+.. image:: _images/chart_trendline1.png
    :scale: 75 %
 
 A ``moving_average`` trendline can also specify the ``period`` of the moving
@@ -207,7 +208,7 @@ average. The default value is 2::
     })
 
 
-.. image:: _static/chart_trendline2.png
+.. image:: _images/chart_trendline2.png
    :scale: 75 %
 
 The ``forward`` and ``backward`` properties set the forecast period of the
@@ -255,7 +256,7 @@ Several of these properties can be set in one go::
         },
     })
 
-.. image:: _static/chart_trendline3.png
+.. image:: _images/chart_trendline3.png
    :scale: 75 %
 
 Trendlines cannot be added to series in a stacked chart or pie chart, radar
@@ -286,7 +287,7 @@ The ``type`` property sets the type of error bars in the series::
         'y_error_bars': {'type': 'standard_error'},
     })
 
-.. image:: _static/chart_error_bars1.png
+.. image:: _images/chart_error_bars1.png
    :scale: 75 %
 
 The available error bars types are available::
@@ -330,7 +331,7 @@ are 1 (the default) or 0 (for no end cap)::
         },
     })
 
-.. image:: _static/chart_error_bars2.png
+.. image:: _images/chart_error_bars2.png
    :scale: 75 %
 
 
@@ -358,7 +359,7 @@ The ``value`` property turns on the *Value* data label for a series::
         'data_labels': {'value': True},
     })
 
-.. image:: _static/chart_data_labels1.png
+.. image:: _images/chart_data_labels1.png
    :scale: 75 %
 
 The ``category`` property turns on the *Category Name* data label for a series::
@@ -460,7 +461,7 @@ In these cases it is possible to use the ``points`` property of
 
     workbook.close()
 
-.. image:: _static/chart_points1.png
+.. image:: _images/chart_points1.png
    :scale: 75 %
 
 The ``points`` property takes a list of format options (see the "Chart
@@ -485,6 +486,20 @@ pass ``None`` values in the array ref::
         ],
     })
 
+
+Chart series option: Smooth
+---------------------------
+
+The ``smooth`` option is used to set the smooth property of a line series. It
+is only applicable to the ``line`` and ``scatter`` chart types::
+
+    chart.add_series({
+        'categories': '=Sheet1!$A$1:$A$5',
+        'values':     '=Sheet1!$B$1:$B$5',
+        'smooth':     True,
+    })
+
+
 .. _chart_formatting:
 
 Chart Formatting
@@ -506,7 +521,7 @@ Chart formatting properties are generally set using dicts::
         'line':   {'color': 'red'},
     })
 
-.. image:: _static/chart_formatting1.png
+.. image:: _images/chart_formatting1.png
    :scale: 75 %
 
 In some cases the format properties can be nested. For example a ``marker`` may
@@ -522,7 +537,7 @@ contain ``border`` and ``fill`` sub-properties::
         },
     })
 
-.. image:: _static/chart_formatting2.png
+.. image:: _images/chart_formatting2.png
    :scale: 75 %
 
 
@@ -551,7 +566,7 @@ with markers but without a line::
         'marker': {'type': 'automatic'},
     })
 
-.. image:: _static/chart_formatting3.png
+.. image:: _images/chart_formatting3.png
    :scale: 75 %
 
 
@@ -571,7 +586,7 @@ or a limited number named colours, see :ref:`format_colors`::
         'line':   {'color': '#FF9900'},
     })
 
-.. image:: _static/chart_formatting4.png
+.. image:: _images/chart_formatting4.png
    :scale: 75 %
 
 
@@ -591,7 +606,7 @@ The ``dash_type`` property sets the dash style of the line::
         'line':   {'dash_type': 'dash_dot'},
     })
 
-.. image:: _static/chart_formatting5.png
+.. image:: _images/chart_formatting5.png
    :scale: 75 %
 
 The following ``dash_type`` values are available. They are shown in the order
@@ -655,7 +670,7 @@ generally on by default)::
         'border': {'color': 'black'}
     })
 
-.. image:: _static/chart_fill1.png
+.. image:: _images/chart_fill1.png
    :scale: 75 %
 
 The ``color`` property sets the colour of the ``fill`` area::
@@ -675,7 +690,7 @@ or a limited number named colours, see :ref:`format_colors`::
         'fill':   {'color': '#FF9900'}
     })
 
-.. image:: _static/chart_fill2.png
+.. image:: _images/chart_fill2.png
    :scale: 75 %
 
 The ``fill`` format is generally used in conjunction with a ``border`` format
@@ -702,6 +717,7 @@ and axis numbering::
     bold
     italic
     underline
+    rotation
     color
 
 These properties correspond to the equivalent Worksheet cell Format object
@@ -731,6 +747,11 @@ The following explains the available font properties:
 
     chart.set_x_axis({'num_font':  {'underline': True}})
 
+* ``rotation``: Set the font rotation property in the range -90 to 90 deg::
+
+    chart.set_x_axis({'num_font':  {'rotation': 45}})
+
+  This is useful for displaying axis data such as dates in a more compact format.
 
 * ``color``: Set the font color property. Can be a color index, a color name
   or HTML style RGB colour::
@@ -776,7 +797,7 @@ Here is an example of Font formatting in a Chart program::
         },
     })
 
-.. image:: _static/chart_font1.png
+.. image:: _images/chart_font1.png
    :scale: 75 %
 
 
@@ -823,7 +844,7 @@ the ``y2_axis`` or ``x2_axis`` property of the series::
 
     workbook.close()
 
-.. image:: _static/chart_secondary_axis2.png
+.. image:: _images/chart_secondary_axis2.png
    :scale: 75 %
 
 Note it isn't currently possible to add a secondary axis of a different chart

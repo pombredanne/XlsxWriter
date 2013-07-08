@@ -10,7 +10,6 @@ from warnings import warn
 from . import xmlwriter
 from .utility import xl_color
 from .utility import xl_rowcol_to_cell
-from .utility import encode_utf8
 
 
 class Chart(xmlwriter.XMLwriter):
@@ -81,6 +80,7 @@ class Chart(xmlwriter.XMLwriter):
         self.hi_low_lines = None
         self.up_down_bars = None
         self.legend_delete_series = None
+        self.smooth_allowed = False
 
         self._set_default_properties()
 
@@ -135,6 +135,9 @@ class Chart(xmlwriter.XMLwriter):
         # Set the trendline properties for the series.
         trendline = self._get_trendline_properties(options.get('trendline'))
 
+        # Set the line smooth property for the series.
+        smooth = options.get('smooth')
+
         # Set the error bars properties for the series.
         y_error_bars = self._get_error_bars_props(options.get('y_error_bars'))
         x_error_bars = self._get_error_bars_props(options.get('x_error_bars'))
@@ -182,6 +185,7 @@ class Chart(xmlwriter.XMLwriter):
             'y2_axis': y2_axis,
             'points': points,
             'error_bars': error_bars,
+            'smooth': smooth
         }
 
         self.series.append(series)
@@ -566,9 +570,6 @@ class Chart(xmlwriter.XMLwriter):
             'num_format_linked': options.get('num_format_linked'),
         }
 
-        # Encode any string options passed by the user.
-        axis['num_format'] = encode_utf8(axis['num_format'])
-
         if 'visible' in options:
             axis['visible'] = options.get('visible')
         else:
@@ -611,11 +612,16 @@ class Chart(xmlwriter.XMLwriter):
             'pitch_family': options.get('pitch_family'),
             'charset': options.get('charset'),
             'baseline': options.get('baseline', 0),
+            'rotation': options.get('rotation'),
         }
 
         # Convert font size units.
         if font['size']:
             font['size'] *= 100
+
+        # Convert rotation into 60,000ths of a degree.
+        if (font['rotation']):
+            font['rotation'] = 60000 * int(font['rotation'])
 
         return font
 
@@ -639,9 +645,6 @@ class Chart(xmlwriter.XMLwriter):
         if name is not None and re.match(r'^=?[^!]+!', name):
             name_formula = name
             name = ''
-
-        name = encode_utf8(name)
-        name_formula = encode_utf8(name_formula)
 
         return name, name_formula
 
@@ -736,7 +739,7 @@ class Chart(xmlwriter.XMLwriter):
             if dash_type in dash_types:
                 line['dash_type'] = dash_types[dash_type]
             else:
-                warn("Unknown dash type '%'" % dash_type)
+                warn("Unknown dash type '%s'" % dash_type)
                 return
 
         line['defined'] = True
@@ -825,7 +828,7 @@ class Chart(xmlwriter.XMLwriter):
         if trend_type in types:
             trendline['type'] = types[trend_type]
         else:
-            warn("Unknown trendline type 'trend_type'" % trend_type)
+            warn("Unknown trendline type '%s'" % trend_type)
             return
 
         # Set the line properties for the trendline..
@@ -869,7 +872,7 @@ class Chart(xmlwriter.XMLwriter):
         if error_type in types:
             error_bars['type'] = types[error_type]
         else:
-            warn("Unknown error bars type 'error_type" % error_type)
+            warn("Unknown error bars type '%s" % error_type)
             return
 
         # Set the value for error types that require it.
@@ -1283,6 +1286,10 @@ class Chart(xmlwriter.XMLwriter):
         # Write the c:val element.
         self._write_val(series)
 
+        # Write the c:smooth element.
+        if self.smooth_allowed:
+            self._write_c_smooth(series['smooth'])
+
         self._xml_end_tag('c:ser')
 
     def _write_idx(self, val):
@@ -1306,6 +1313,12 @@ class Chart(xmlwriter.XMLwriter):
             self._write_tx_formula(series['name_formula'], series['name_id'])
         elif series['name'] is not None:
             self._write_tx_value(series['name'])
+
+    def _write_c_smooth(self, smooth):
+        # Write the <c:smooth> element.
+
+        if smooth:
+            self._xml_empty_tag('c:smooth', [('val', '1')])
 
     def _write_cat(self, series):
         # Write the <c:cat> element.
@@ -2270,6 +2283,15 @@ class Chart(xmlwriter.XMLwriter):
 
         self._xml_empty_tag('a:bodyPr', attributes)
 
+    def _write_axis_body_pr(self, rotation):
+        # Write the <a:bodyPr> element for axis fonts.
+        attributes = []
+
+        if rotation is not None:
+            attributes.append(('rot', rotation))
+
+        self._xml_empty_tag('a:bodyPr', attributes)
+
     def _write_a_lst_style(self):
         # Write the <a:lstStyle> element.
         self._xml_empty_tag('a:lstStyle')
@@ -2906,7 +2928,7 @@ class Chart(xmlwriter.XMLwriter):
             return
 
         self._xml_start_tag('c:txPr')
-        self._xml_empty_tag('a:bodyPr')
+        self._write_axis_body_pr(font.get('rotation'))
         self._write_a_lst_style()
         self._xml_start_tag('a:p')
 

@@ -31,7 +31,7 @@ given filename::
 
     worksheet.write(0, 0, 'Hello Excel')
 
-.. image:: _static/workbook01.png
+.. image:: _images/workbook01.png
 
 The constructor options are:
 
@@ -72,9 +72,18 @@ The constructor options are:
 When specifying a filename it is recommended that you use an ``.xlsx``
 extension or Excel will generate a warning opening the file.
 
-.. note::
-   A later version of the module will support writing to filehandles like
-   :ref:`Excel::Writer::XLSX <ewx>`.
+It is possible to write files to in-memory strings using StringIO as follows::
+
+    output = StringIO()
+    workbook = Workbook(output)
+    worksheet = workbook.add_worksheet()
+
+    worksheet.write('A1', 'Hello')
+    workbook.close()
+
+    xlsx_data = output.getvalue()
+
+See also :ref:`ex_http_server`.
 
 
 workbook.add_worksheet()
@@ -101,7 +110,7 @@ Excel convention will be followed, i.e. Sheet1, Sheet2, etc.::
     worksheet3 = workbook.add_worksheet('Data')     # Data
     worksheet4 = workbook.add_worksheet()           # Sheet4
 
-.. image:: _static/workbook02.png
+.. image:: _images/workbook02.png
 
 The worksheet name must be a valid Excel worksheet name, i.e. it cannot contain
 any of the characters ``' [ ] : * ? / \
@@ -242,7 +251,7 @@ The properties should be passed in dictionary format as follows::
         'keywords': 'Sample, Example, Properties',
         'comments': 'Created with Python and XlsxWriter'})
 
-.. image:: _static/doc_properties.png
+.. image:: _images/doc_properties.png
 
 See also :ref:`ex_doc_properties`.
 

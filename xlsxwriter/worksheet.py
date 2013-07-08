@@ -9,6 +9,8 @@
 import re
 import datetime
 import tempfile
+import codecs
+import os
 from warnings import warn
 from collections import defaultdict
 from collections import namedtuple
@@ -31,7 +33,6 @@ from .utility import xl_col_to_name
 from .utility import xl_range
 from .utility import xl_color
 from .utility import get_sparkline_style
-from .utility import encode_utf8
 
 
 ###############################################################################
@@ -392,9 +393,6 @@ class Worksheet(xmlwriter.XMLwriter):
             string = string[:self.xls_strmax]
             str_error = -2
 
-        # Encode any string options passed by the user.
-        string = encode_utf8(string)
-
         # Write a shared string or an in-line string in optimisation mode.
         if self.optimization == 0:
             string_index = self.str_table._get_shared_string_index(string)
@@ -505,9 +503,6 @@ class Worksheet(xmlwriter.XMLwriter):
         if formula.startswith('='):
             formula = formula.lstrip('=')
 
-        # Encode any string options passed by the user.
-        formula = encode_utf8(formula)
-
         # Write previous row if in in-line string optimization mode.
         if self.optimization and row > self.previous_row:
             self._write_single_row(row)
@@ -562,9 +557,6 @@ class Worksheet(xmlwriter.XMLwriter):
             formula = formula[1:]
         if formula[-1] == '}':
             formula = formula[:-1]
-
-        # Encode any string options passed by the user.
-        formula = encode_utf8(formula)
 
         # Write previous row if in in-line string optimization mode.
         if self.optimization and first_row > self.previous_row:
@@ -748,11 +740,6 @@ class Worksheet(xmlwriter.XMLwriter):
         # Write the hyperlink string.
         self.write_string(row, col, string, cell_format)
 
-        # Encode any string options passed by the user.
-        url = encode_utf8(url)
-        url_str = encode_utf8(url_str)
-        tip = encode_utf8(tip)
-
         # Store the hyperlink data in a separate structure.
         self.hyperlinks[row][col] = {
             'link_type': link_type,
@@ -815,10 +802,10 @@ class Worksheet(xmlwriter.XMLwriter):
                 if previous != 'format':
                     # If previous token wasn't a format add one before string.
                     fragments.append(default)
-                    fragments.append(encode_utf8(token))
+                    fragments.append(token)
                 else:
                     # If previous token was a format just add the string.
-                    fragments.append(encode_utf8(token))
+                    fragments.append(token)
 
                 # Keep track of actual string str_length.
                 str_length += len(token)
@@ -1009,9 +996,6 @@ class Worksheet(xmlwriter.XMLwriter):
         self.has_vml = 1
         self.has_comments = 1
 
-        # Encode any string options passed by the user.
-        comment = encode_utf8(comment)
-
         # Process the properties of the cell comment.
         self.comments[row][col] = \
             self._comment_params(row, col, comment, options)
@@ -1040,7 +1024,7 @@ class Worksheet(xmlwriter.XMLwriter):
             Nothing.
 
         """
-        self.comments_author = encode_utf8(author)
+        self.comments_author = author
 
     def get_name(self):
         """
@@ -1382,7 +1366,7 @@ class Worksheet(xmlwriter.XMLwriter):
             (_, col) = xl_cell_to_rowcol(col + '1')
 
             if col >= self.xls_colmax:
-                warn("Invalid column '%d'" % col_letter)
+                warn("Invalid column '%s'" % col_letter)
                 return
 
         (col_first, col_last) = self.filter_range
@@ -1441,7 +1425,7 @@ class Worksheet(xmlwriter.XMLwriter):
             (_, col) = xl_cell_to_rowcol(col + '1')
 
             if col >= self.xls_colmax:
-                warn("Invalid column '%d'" % col_letter)
+                warn("Invalid column '%s'" % col_letter)
                 return
 
         (col_first, col_last) = self.filter_range
@@ -2628,7 +2612,7 @@ class Worksheet(xmlwriter.XMLwriter):
             if key in defaults:
                 defaults[key] = options[key]
             else:
-                warn("Unknown protection object: '%s'\n" % key)
+                warn("Unknown protection object: '%s'" % key)
 
         # Set the password after the user defined values.
         defaults['password'] = password
@@ -2759,7 +2743,7 @@ class Worksheet(xmlwriter.XMLwriter):
             warn('Header string must be less than 255 characters')
             return
 
-        self.header = encode_utf8(header)
+        self.header = header
         self.margin_header = margin
         self.header_footer_changed = 1
 
@@ -2779,7 +2763,7 @@ class Worksheet(xmlwriter.XMLwriter):
             warn('Footer string must be less than 255 characters')
             return
 
-        self.footer = encode_utf8(footer)
+        self.footer = footer
         self.margin_footer = margin
         self.header_footer_changed = 1
 
@@ -3019,9 +3003,14 @@ class Worksheet(xmlwriter.XMLwriter):
         if self.date_1904:
             self.epoch = datetime.datetime(1904, 1, 1)
 
+        # Open a temp filehandle to store row data in optimization mode.
         if self.optimization == 1:
-            # Open a temp filehandle to store row data in optimization mode.
-            self.row_data_fh = tempfile.TemporaryFile(mode='w+', dir=self.tmpdir)
+            # This make be sub-optimal or insecure. It seems like too much
+            # work to create a temp file with utf8 encoding in Python < 3.
+            (fd, filename) = tempfile.mkstemp(dir=self.tmpdir)
+            os.close(fd)
+            self.row_data_filename = filename
+            self.row_data_fh = codecs.open(filename, 'w+', 'utf-8')
 
             # Also use this as the worksheet filehandle until the file is
             # due to be assembled.
@@ -3692,16 +3681,6 @@ class Worksheet(xmlwriter.XMLwriter):
             height -= self._size_row(row_end)
             row_end += 1
 
-        # TODO, is this required? Write testcase for image that fits cell.
-        #
-        # The following is only required for positioning drawing/chart objects
-        # and not comments. It is probably the result of a bug.
-        # if is_drawing:
-        #    if width == 0:
-        #        col_end -= 1
-        #    if height == 0:
-        #        row_end -= 1
-
         # The end vertices are whatever is left from the width and height.
         x2 = width
         y2 = height
@@ -3714,8 +3693,8 @@ class Worksheet(xmlwriter.XMLwriter):
         # the column width to the nearest pixel. If the width hasn't been set
         # by the user we use the default value. If the column is hidden it
         # has a value of zero.
-        max_digit_width = 7  # For Calabri 11.
-        padding = 5
+        max_digit_width = 7.0  # For Calabri 11.
+        padding = 5.0
         pixels = 0
 
         # Look up the cell value to see if it has been changed.
@@ -3726,7 +3705,7 @@ class Worksheet(xmlwriter.XMLwriter):
             if width == 0:
                 pixels = 0
             elif width < 1:
-                pixels = int(width * 12 + 0.5)
+                pixels = int(width * (max_digit_width + padding) + 0.5)
             else:
                 pixels = int(width * max_digit_width + 0.5) + padding
         else:
@@ -3779,9 +3758,6 @@ class Worksheet(xmlwriter.XMLwriter):
         # misspelled parameters are silently ignored.
         for key in options.keys():
             params[key] = options[key]
-
-        # Encode any string options passed by the user.
-        params['author'] = encode_utf8(params['author'])
 
         # Ensure that a width and height have been set.
         if not params['width']:
@@ -4285,10 +4261,15 @@ class Worksheet(xmlwriter.XMLwriter):
         # Convert column width from user units to character width.
         if width > 0:
             # For Calabri 11.
-            max_digit_width = 7
-            padding = 5
-            width = int((float(width) * max_digit_width + padding)
-                        / max_digit_width * 256.0) / 256.0
+            max_digit_width = 7.0
+            padding = 5.0
+
+            if width < 1:
+                width = int((int(width * (max_digit_width + padding) + 0.5))
+                            / max_digit_width * 256.0) / 256.0
+            else:
+                width = int((int(width * max_digit_width + 0.5) + padding)
+                            / max_digit_width * 256.0) / 256.0
 
         attributes = [
             ('min', col_min + 1),
@@ -4339,6 +4320,7 @@ class Worksheet(xmlwriter.XMLwriter):
                 data = self.row_data_fh.read(buff_size)
 
             self.row_data_fh.close()
+            os.unlink(self.row_data_filename)
 
             self._xml_end_tag('sheetData')
 
@@ -4687,14 +4669,12 @@ class Worksheet(xmlwriter.XMLwriter):
 
         elif type(cell).__name__ == 'Formula':
             # Write a formula. First check if the formula value is a string.
-            value = cell.value
             try:
-                float(value)
+                float(cell.value)
             except ValueError:
                 attributes.append(('t', 'str'))
-                value = encode_utf8(value)
 
-            self._xml_formula_element(cell.formula, value, attributes)
+            self._xml_formula_element(cell.formula, cell.value, attributes)
 
         elif type(cell).__name__ == 'ArrayFormula':
             # Write a array formula.
@@ -4719,11 +4699,6 @@ class Worksheet(xmlwriter.XMLwriter):
         # Write the cell value <v> element.
         if value is None:
             value = ''
-
-        try:
-            float(value)
-        except ValueError:
-            value = encode_utf8(value)
 
         self._xml_data_element('v', value)
 
@@ -5640,12 +5615,12 @@ class Worksheet(xmlwriter.XMLwriter):
     def _calculate_x_split_width(self, width):
         # Convert column width from user units to pane split width.
 
-        max_digit_width = 7  # For Calabri 11.
-        padding = 5
+        max_digit_width = 7.0  # For Calabri 11.
+        padding = 5.0
 
         # Convert to pixels.
         if width < 1:
-            pixels = int(width * 12 + 0.5)
+            pixels = int(width * (max_digit_width + padding) + 0.5)
         else:
             pixels = int(width * max_digit_width + 0.5) + padding
 
