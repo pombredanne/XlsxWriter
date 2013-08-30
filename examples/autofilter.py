@@ -8,9 +8,9 @@
 #
 # Copyright 2013, John McNamara, jmcnamara@cpan.org
 #
-from xlsxwriter.workbook import Workbook
+import xlsxwriter
 
-workbook = Workbook('autofilter.xlsx')
+workbook = xlsxwriter.Workbook('autofilter.xlsx')
 
 # Add a worksheet for each autofilter example.
 worksheet1 = workbook.add_worksheet()
@@ -35,6 +35,14 @@ data = []
 for line in textfile:
     # Split the input data based on whitespace.
     row_data = line.strip("\n").split()
+
+    # Convert the number data from the text file.
+    for i, item in enumerate(row_data):
+        try:
+            row_data[i] = float(item)
+        except ValueError:
+            pass
+
     data.append(row_data)
 
 

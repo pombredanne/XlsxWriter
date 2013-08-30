@@ -34,10 +34,10 @@ To do this we can extend our program as follows:
    :emphasize-lines: 1, 15, 18, 27-30, 39-43
 
     from datetime import datetime
-    from xlsxwriter.workbook import Workbook
+    import xlsxwriter
 
     # Create a workbook and add a worksheet.
-    workbook = Workbook('Expenses03.xlsx')
+    workbook = xlsxwriter.Workbook('Expenses03.xlsx')
     worksheet = workbook.add_worksheet()
 
     # Add a bold format to use to highlight cells.
@@ -147,19 +147,22 @@ alias for several more specific methods:
 
 * :func:`write_string()`
 * :func:`write_number()`
-* :func:`write_datetime()`
 * :func:`write_blank()`
 * :func:`write_formula()`
+* :func:`write_datetime()`
+* :func:`write_boolean()`
+* :func:`write_url()`
+
 
 So, let's see how all of this affects our program.
 
 The main change in our example program is the addition of date handling. As we
 saw above Excel stores dates as numbers. XlsxWriter makes the required
-conversion if the date and time are Python :mod:`datetime` objects.
-To convert the date strings in our example to ``datetime.datetime`` objects we
-use the :meth:`datetime.strptime <datetime.datetime.strptime>` function. We
-then use the :func:`write_datetime()` function to write it to a file. However,
-since the date is converted to a number we also need to add a number format to
+conversion if the date and time are Python :mod:`datetime` objects. To convert
+the date strings in our example to ``datetime.datetime`` objects we use the
+:meth:`datetime.strptime <datetime.datetime.strptime>` function. We then use
+the :func:`write_datetime()` function to write it to a file. However, since
+the date is converted to a number we also need to add a number format to
 ensure that Excel displays it as as date::
 
     from datetime import datetime
@@ -185,9 +188,8 @@ methods for different types of data::
 This is mainly to show that if you need more control over the type of data you
 write to a worksheet you can use the appropriate method. In this simplified
 example the :func:`write()` method would have worked just as well but it is
-important to note that in cases where ``write()`` doesn't do the right thing,
-such as the number with leading zeroes discussed above, you will need to be
-explicit.
+important to note that in cases where ``write()`` doesn't do the right thing
+you will need to be explicit.
 
 Finally, the last addition to our program is the :func:`set_column` method to
 adjust the width of column 'B' so that the dates are more clearly visible::

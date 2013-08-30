@@ -24,9 +24,9 @@ Constructor
 The ``Workbook()`` constructor is used to create a new Excel workbook with a
 given filename::
 
-    from xlsxwriter import Workbook
+    import xlsxwriter
 
-    workbook  = Workbook('filename.xlsx')
+    workbook  = xlsxwriter.Workbook('filename.xlsx')
     worksheet = workbook.add_worksheet()
 
     worksheet.write(0, 0, 'Hello Excel')
@@ -38,7 +38,7 @@ The constructor options are:
 * **constant_memory**: Reduces the amount of data stored in memory so that
   large files can be written efficiently::
 
-       workbook = Workbook(filename, {'constant_memory': True})
+       workbook = xlsxwriter.Workbook(filename, {'constant_memory': True})
 
   Note, in this mode  a row of data is written and then discarded when a cell
   in a new row is added via one of the worksheet ``write_()`` methods. As such
@@ -54,7 +54,7 @@ The constructor options are:
   directory isn't accessible to your application, or doesn't contain enough
   space, you can specify an alternative location using the ``tempdir`` option::
 
-       workbook = Workbook(filename, {'tmpdir': '/home/user/tmp'})
+       workbook = xlsxwriter.Workbook(filename, {'tmpdir': '/home/user/tmp'})
 
   The temporary directory must exist and will not be created.
 
@@ -66,8 +66,34 @@ The constructor options are:
   compatibility with Excel::Writer::XLSX and in general isn't required very
   often::
 
-      workbook = Workbook(filename, {'date_1904': True})
+      workbook = xlsxwriter.Workbook(filename, {'date_1904': True})
 
+* **strings_to_numbers**: Enable the
+  :ref:`worksheet. <Worksheet>`:func:`write()` method to convert strings to
+  numbers, where possible, using :func:`float()` in order to avoid an Excel
+  warning about "Numbers Stored as Text". The default is ``False``::
+
+      workbook = xlsxwriter.Workbook(filename, {'strings_to_numbers': True})
+
+* **strings_to_formulas**: Enable the
+  :ref:`worksheet. <Worksheet>`:func:`write()` method to convert strings to
+  formulas. The default is ``True``::
+
+      workbook = xlsxwriter.Workbook(filename, {'strings_to_formulas': False})
+
+* **strings_to_urls**: Enable the
+  :ref:`worksheet. <Worksheet>`:func:`write()` method to convert strings to
+  urls. The default is ``True``::
+
+      workbook = xlsxwriter.Workbook(filename, {'strings_to_urls': True})
+
+* **default_date_format**: This option is used to specify a default date
+  format string for use with the
+  :ref:`worksheet. <Worksheet>`:func:`write_datetime()` method when an
+  explicit format isn't given. See :ref:`working_with_dates_and_time` for more
+  details::
+
+      xlsxwriter.Workbook(filename, {'default_date_format': 'dd/mm/yy'})
 
 When specifying a filename it is recommended that you use an ``.xlsx``
 extension or Excel will generate a warning opening the file.
@@ -75,7 +101,7 @@ extension or Excel will generate a warning opening the file.
 It is possible to write files to in-memory strings using StringIO as follows::
 
     output = StringIO()
-    workbook = Workbook(output)
+    workbook = xlsxwriter.Workbook(output)
     worksheet = workbook.add_worksheet()
 
     worksheet.write('A1', 'Hello')

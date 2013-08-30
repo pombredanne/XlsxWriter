@@ -4,11 +4,11 @@
 #
 # Copyright 2013, John McNamara, jmcnamara@cpan.org
 #
-from xlsxwriter.workbook import Workbook
+import xlsxwriter
 
 
 # Create an new Excel file and add a worksheet.
-workbook = Workbook('demo.xlsx')
+workbook = xlsxwriter.Workbook('demo.xlsx')
 worksheet = workbook.add_worksheet()
 
 # Widen the first column to make the text clearer.
@@ -26,5 +26,8 @@ worksheet.write('A2', 'World', bold)
 # Write some numbers, with row/column notation.
 worksheet.write(2, 0, 123)
 worksheet.write(3, 0, 123.456)
+
+# Insert an image.
+worksheet.insert_image('B5', 'logo.png')
 
 workbook.close()

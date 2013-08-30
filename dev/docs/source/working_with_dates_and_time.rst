@@ -14,9 +14,9 @@ a date you must apply an Excel number format to it. Here are some examples:
 
 .. code-block:: python
 
-    from xlsxwriter.workbook import Workbook
+    import xlsxwriter
     
-    workbook = Workbook('date_examples.xlsx')
+    workbook = xlsxwriter.Workbook('date_examples.xlsx')
     worksheet = workbook.add_worksheet()
 
     # Widen column A for extra visibility.
@@ -54,10 +54,10 @@ To make working with dates and times a little easier the XlsxWriter module
 provides a :func:`write_datetime` method to write dates in standard library
 :mod:`datetime` format.
 
-Specifically it supports datetime objects of type :class:`datetime.datetime`, 
-:class:`datetime.date` and :class:`datetime.time`. 
+Specifically it supports datetime objects of type :class:`datetime.datetime`,
+:class:`datetime.date` and :class:`datetime.time`.
 
-There are many way to create datetime objects, for example the 
+There are many way to create datetime objects, for example the
 :meth:`datetime.datetime.strptime` method::
 
     date_time = datetime.datetime.strptime('2013-01-23', '%Y-%m-%d')
@@ -78,10 +78,10 @@ formats:
 .. code-block:: python
 
     from datetime import datetime
-    from xlsxwriter.workbook import Workbook
+    import xlsxwriter
     
     # Create a workbook and add a worksheet.
-    workbook = Workbook('datetimes.xlsx')
+    workbook = xlsxwriter.Workbook('datetimes.xlsx')
     worksheet = workbook.add_worksheet()
     bold = workbook.add_format({'bold': True})
     
@@ -135,3 +135,22 @@ formats:
 
 
 .. image:: _images/working_with_dates_and_times02.png
+
+
+Default Date Formatting
+-----------------------
+
+In certain circumstances you may wish to apply a default date format when
+writing datetime objects, for example, when handling a row of data with
+:func:`write_row`.
+
+In these cases it is possible to specify a default date format string using the
+:func:`Workbook` constructor ``default_date_format`` option::
+
+    workbook = xlsxwriter.Workbook('datetimes.xlsx', {'default_date_format':
+                                                      'dd/mm/yy'})
+    worksheet = workbook.add_worksheet()
+    date_time = datetime.now()
+    worksheet.write_datetime(0, 0, date_time)  # Formatted as 'dd/mm/yy'
+
+    workbook.close()

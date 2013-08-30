@@ -27,10 +27,10 @@ To do this we can extend our program as follows:
 .. code-block:: python
    :emphasize-lines: 7-15, 32, 36-37
 
-    from xlsxwriter.workbook import Workbook
+    import xlsxwriter
 
     # Create a workbook and add a worksheet.
-    workbook = Workbook('Expenses02.xlsx')
+    workbook = xlsxwriter.Workbook('Expenses02.xlsx')
     worksheet = workbook.add_worksheet()
 
     # Add a bold format to use to highlight cells.
@@ -75,8 +75,8 @@ Format objects represent all of the formatting properties that can be applied
 to a cell in Excel such as fonts, number formatting, colors and borders. This
 is explained in more detail in :ref:`format` and :ref:`working_with_formats`.
 
-For now we will avoid the getting into the details and just use a limited
-amount of the format functionality to add some simple formatting::
+For now we will avoid getting into the details and just use a limited amount of
+the format functionality to add some simple formatting::
 
     # Add a bold format to use to highlight cells.
     bold = workbook.add_format({'bold': True})

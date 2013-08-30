@@ -6,6 +6,7 @@
 #
 
 # Standard packages.
+import sys
 import re
 import os
 import tempfile
@@ -57,6 +58,10 @@ class Workbook(xmlwriter.XMLwriter):
         self.filename = filename
         self.tmpdir = options.get('tmpdir', None)
         self.date_1904 = options.get('date_1904', False)
+        self.strings_to_numbers = options.get('strings_to_numbers', False)
+        self.strings_to_formulas = options.get('strings_to_formulas', True)
+        self.strings_to_urls = options.get('strings_to_urls', True)
+        self.default_date_format = options.get('default_date_format', None)
         self.worksheet_meta = WorksheetMeta()
         self.selected = 0
         self.fileclosed = 0
@@ -100,6 +105,15 @@ class Workbook(xmlwriter.XMLwriter):
         # Add the default cell format.
         self.add_format({'xf_index': 0})
 
+        # Add a default URL format.
+        self.default_url_format = self.add_format({'color': 'blue',
+                                                   'underline': 1})
+
+        # Add the default date format.
+        if self.default_date_format is not None:
+            self.default_date_format = \
+                self.add_format({'num_format': self.default_date_format})
+
     def __del__(self):
         """Close file in destructor if it hasn't been closed explicitly."""
         if not self.fileclosed:
@@ -128,6 +142,11 @@ class Workbook(xmlwriter.XMLwriter):
             'optimization': self.optimization,
             'tmpdir': self.tmpdir,
             'date_1904': self.date_1904,
+            'strings_to_numbers': self.strings_to_numbers,
+            'strings_to_formulas': self.strings_to_formulas,
+            'strings_to_urls': self.strings_to_urls,
+            'default_date_format': self.default_date_format,
+            'default_url_format': self.default_url_format,
         }
 
         worksheet = Worksheet()
@@ -481,8 +500,19 @@ class Workbook(xmlwriter.XMLwriter):
             self.dxf_formats[index] = dxf_format
 
     def _set_default_xf_indices(self):
-        # Set the default index for each format. Mainly used for testing.
-        for xf_format in self.formats:
+        # Set the default index for each format. Only used for testing.
+
+        formats = list(self.formats)
+
+        # Delete the default url format.
+        del formats[1]
+
+        # Skip the default date format if set.
+        if self.default_date_format is not None:
+            del formats[1]
+
+        # Set the remaining formats.
+        for xf_format in formats:
             xf_format._get_xf_index()
 
     def _prepare_fonts(self):
@@ -766,24 +796,32 @@ class Workbook(xmlwriter.XMLwriter):
         # Look for some common image file markers.
         marker1 = (unpack('3s', data[1:4]))[0]
         marker2 = (unpack('>H', data[:2]))[0]
-        marker3 = (unpack('4s', data[6:10]))[0]
-        marker4 = (unpack('2s', data[:2]))[0]
+        marker3 = (unpack('2s', data[:2]))[0]
 
-        if marker1 == b'PNG':
+        if sys.version_info < (2, 6, 0):
+            # Python 2.5/Jython.
+            png_marker = 'PNG'
+            bmp_marker = 'BM'
+        else:
+            # Eval the binary literals for Python 2.5/Jython compatibility.
+            png_marker = eval("b'PNG'")
+            bmp_marker = eval("b'BM'")
+
+        if marker1 == png_marker:
             self.image_types['png'] = 1
             (image_type, width, height) = self._process_png(data)
 
-        elif (marker2 == 0xFFD8 and
-              (marker3 == b'JFIF' or marker3 == b'EXIF')):
+        elif (marker2 == 0xFFD8):
             self.image_types['jpeg'] = 1
             (image_type, width, height) = self._process_jpg(data)
 
-        elif (marker4 == b'BM'):
+        elif (marker3 == bmp_marker):
             self.image_types['bmp'] = 1
             (image_type, width, height) = self._process_bmp(data)
 
         else:
-            raise Exception("%s: Unknown or unsupported file type." % filename)
+            raise Exception("%s: Unknown or unsupported image file format."
+                            % filename)
 
         # Check that we found the required data.
         if not height or not width:
@@ -875,10 +913,8 @@ class Workbook(xmlwriter.XMLwriter):
         else:
             return None
 
-    #
-    # Iterate through the worksheets and set up the VML objects.
-    #
     def _prepare_vml(self):
+        # Iterate through the worksheets and set up the VML objects.
         comment_id = 0
         vml_data_id = 1
         vml_shape_id = 1024
@@ -1117,10 +1153,8 @@ class Workbook(xmlwriter.XMLwriter):
 
     def _write_calc_pr(self):
         # Write the <calcPr> element.
-
-        calc_id = '124519'
-
-        attributes = [('calcId', calc_id)]
+        attributes = [('calcId', '124519'),
+                      ('fullCalcOnLoad', '1')]
 
         self._xml_empty_tag('calcPr', attributes)
 

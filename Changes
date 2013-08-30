@@ -1,3 +1,77 @@
+
+Release 0.4.2 - August 30 2013
+------------------------------
+
+* Added a default blue underline hyperlink format for :func:`write_url()`.
+
+* Added :func:`Workbook` constructor options ``strings_to_formulas`` and
+  ``strings_to_urls`` to override default conversion of strings in write().
+
+
+Release 0.4.1 - August 28 2013
+------------------------------
+
+* Fix for charts and images that cross rows and columns that are hidden or 
+  formatted but which don't have size changes. Issue #42 reported by
+  Kristian Stobbe.
+
+
+Release 0.4.0 - August 26 2013
+------------------------------
+
+* Added more generic support for JPEG files. Issue #40 reported by Simon
+  Breuss.
+
+* Fix for harmless Python 3 installation warning. Issue #41 reported by James
+  Reeves.
+
+
+Release 0.3.9 - August 24 2013
+------------------------------
+
+* Added fix for minor issue with :func:`insert_image` for images that extend
+  over several cells.
+
+* Added fix to ensure formula calculation on load regardless of Excel version.
+
+
+Release 0.3.8 - August 23 2013
+------------------------------
+
+* Added handling for Decimal(), Fraction() and other float types to the
+  :func:`write()` function.
+
+* Added Python 2.5 and Jython support. Thanks to Jonas Diemer for the patch.
+
+
+Release 0.3.7 - August 16 2013
+------------------------------
+
+* Added :func:`write_boolean()` function to write Excel boolean values. Issue
+  #37. Also added explicit handling of Python bool values to the
+  :func:`write()` function.
+
+* Changed :func:`Workbook` constructor option
+  ``strings_to_numbers`` default option to False so that there is no implicit
+  conversion of numbers in strings to numbers. The previous behaviour can be
+  obtained by setting the constructor option to True.
+  **Note** This is a backward incompatibility.
+
+
+Release 0.3.6 - July 26 2013
+-----------------------------
+
+* Simplified import based on a suggestion from John Yeung. Issue #26.
+
+* Fix for NAN/INF converted to invalid numbers in write(). Issue #30.
+
+* Added :func:`Workbook` constructor option ``strings_to_numbers`` to
+  override default conversion of number strings to numbers in write().
+
+* Added :func:`Workbook` constructor option ``default_date_format`` to
+  allow a default date format string to be set. Issue #5.
+
+
 Release 0.3.5 - June 28 2013
 -----------------------------
 
@@ -24,30 +98,30 @@ Release 0.3.3 - June 10 2013
 
 * Minor packaging fixes, #14 and #19.
 
-* Fixed explicit UTF-8 file encoding for Python 3. 
+* Fixed explicit UTF-8 file encoding for Python 3.
   PR from Alexandr Shadchin, #15.
 
 * Fixed invalid string formatting resulted in misleading stacktrace.
-  PR from Andrei Korostelev, #21.  
+  PR from Andrei Korostelev, #21.
 
 
 Release 0.3.2 - May 1 2013
 -----------------------------
 
-* Speed optimisations. The module is now 10-15% faster on average. 
+* Speed optimisations. The module is now 10-15% faster on average.
 
 
 Release 0.3.1 - April 27 2013
 -----------------------------
 
-* Added chart support. See the :ref:`chart_class`, :ref:`working_with_charts` 
+* Added chart support. See the :ref:`chart_class`, :ref:`working_with_charts`
   and :ref:`chart_examples`.
 
 
 Release 0.3.0 - April 7 2013
 -----------------------------
 
-* Added worksheet sparklines. See :ref:`sparklines`, :ref:`ex_sparklines1` and 
+* Added worksheet sparklines. See :ref:`sparklines`, :ref:`ex_sparklines1` and
   :ref:`ex_sparklines2`
 
 
@@ -56,7 +130,7 @@ Release 0.2.9 - April 7 2013
 
 * Added worksheet tables. See :ref:`tables` and :ref:`ex_tables`.
 
-* Tested with the new Python stable releases 2.7.4 and 3.3.1. All tests now 
+* Tested with the new Python stable releases 2.7.4 and 3.3.1. All tests now
   pass in the following versions:
 
     * Python 2.6
@@ -70,7 +144,7 @@ Release 0.2.9 - April 7 2013
 
 * There are now over 700 unit tests including more than 170 tests that
   compare against the output of Excel.
- 
+
 
 Release 0.2.8 - April 4 2013
 -----------------------------
@@ -344,4 +418,3 @@ Release 0.0.1 - February 17 2013
 --------------------------------
 
 * First public release.
-

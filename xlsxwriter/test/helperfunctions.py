@@ -107,20 +107,25 @@ def _compare_xlsx_files(got_file, exp_file, ignore_files, ignore_elements):
     try:
         # Open the XlsxWriter as a zip file for testing.
         got_zip = ZipFile(got_file, 'r')
-    except IOError as e:
+    except IOError:
+        e = sys.exc_info()[1]
         error = "XlsxWriter file error: " + str(e)
         return error, ''
-    except (BadZipfile, LargeZipFile) as e:
+    except (BadZipfile, LargeZipFile):
+        e = sys.exc_info()[1]
         error = "XlsxWriter zipfile error, '" + exp_file + "': " + str(e)
         return error, ''
 
     try:
         # Open the Excel as a zip file for testing.
         exp_zip = ZipFile(exp_file, 'r')
-    except IOError as e:
+    except IOError:
+        # For Python 2.5+ compatibility.
+        e = sys.exc_info()[1]
         error = "Excel file error: " + str(e)
         return error, ''
-    except (BadZipfile, LargeZipFile) as e:
+    except (BadZipfile, LargeZipFile):
+        e = sys.exc_info()[1]
         error = "Excel zipfile error, '" + exp_file + "': " + str(e)
         return error, ''
 
@@ -159,12 +164,17 @@ def _compare_xlsx_files(got_file, exp_file, ignore_files, ignore_elements):
             got_xml_str = re.sub(r'\d\d\d\d-\d\d-\d\dT\d\d\:\d\d:\d\dZ',
                                  '', got_xml_str)
 
-        # Remove workbookView dimensions which are almost always different.
+        # Remove workbookView dimensions which are almost always different
+        # and calcPr which can have different Excel version ids.
         if filename == 'xl/workbook.xml':
             exp_xml_str = re.sub(r'<workbookView[^>]*>',
                                  '<workbookView/>', exp_xml_str)
             got_xml_str = re.sub(r'<workbookView[^>]*>',
                                  '<workbookView/>', got_xml_str)
+            exp_xml_str = re.sub(r'<calcPr[^>]*>',
+                                 '<calcPr/>', exp_xml_str)
+            got_xml_str = re.sub(r'<calcPr[^>]*>',
+                                 '<calcPr/>', got_xml_str)
 
         # Remove printer specific settings from Worksheet pageSetup elements.
         if re.match(r'xl/worksheets/sheet\d.xml', filename):

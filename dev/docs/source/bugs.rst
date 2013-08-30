@@ -20,14 +20,6 @@ This appears to be an issue with the implicit destructor on Windows. It is
 under investigation. Use ``close()`` as a workaround.
 
 
-Formula results not displaying in Excel
----------------------------------------
-
-Some early versions of Excel 2007 do not display the calculated values of
-formulas written by XlsxWriter. Applying all available Service Packs to Excel
-should fix this.
-
-
 Formula results displaying as zero in non-Excel applications
 ------------------------------------------------------------
 
@@ -60,6 +52,18 @@ applications. One known exception is Apple Numbers for Mac where the string
 data isn't displayed.
 
 
+Images not displayed correctly in Excel 2001 for Mac and non-Excel applications
+-------------------------------------------------------------------------------
+
+Images inserted into worksheets via :func:`insert_image` may not display
+correctly in Excel 2011 for Mac and non-Excel applications such as OpenOffice
+and LibreOffice. Specifically the images may looked stretched or squashed.
+
+This is not specifically an XlsxWriter issue. It also occurs with files created
+in Excel 2007 and Excel 2010.
+
+
+
 Reporting Bugs
 ==============
 
@@ -70,21 +74,26 @@ Upgrade to the latest version of the module
 -------------------------------------------
 
 The bug you are reporting may already be fixed in the latest version of the
-module. Check the :ref:`changes` section as well.
+module. You can check which version of XlsxWriter that you are using as
+follows::
+
+    python -c 'import xlsxwriter; print(xlsxwriter.__version__)'
+
+Check the :ref:`changes` section to see what has changed in the latest
+versions.
+
 
 Read the documentation
 ----------------------
 
-The XlsxWriter documentation has been refined in response to user questions.
-Therefore, if you have a question it is possible that someone else has asked
-it before you and that it is already addressed in the documentation.
+Read or search the XlsxWriter documentation to see if the issue you are
+encountering is already explained.
 
 Look at the example programs
 ----------------------------
 
-There are several example programs in the distribution. Many of these were
-created in response to user questions. Try to identify an example program that
-corresponds to your query and adapt it to your needs.
+There are many :ref:`examples` in the distribution. Try to identify an example
+program that corresponds to your query and adapt it to use as a bug report.
 
 Use the official XlsxWriter Issue tracker on GitHub
 ---------------------------------------------------
@@ -96,34 +105,32 @@ The official XlsxWriter
 Pointers for submitting a bug report
 ------------------------------------
 
-1. Describe the problem as clearly and as concisely as possible.
-2. Include a sample program. This is probably the most important step. Also,
-   it is often easier to describe a problem in code than in written prose.
-3. The sample program should be as small as possible to demonstrate the
-   problem. Don't copy and past large sections of your program. The program
-   should also be self contained and working.
+#. Describe the problem as clearly and as concisely as possible.
 
-A sample bug report is shown below. If you use this format then it will help to
-analyse your question and respond to it more quickly.
+#. Include a sample program. This is probably the most important step. It is
+   generally easier to describe a problem in code than in written prose.
 
-   **XlsxWriter Issue with SOMETHING**
+#. The sample program should be as small as possible to demonstrate the
+   problem. Don't copy and paste large non-relevant sections of your program.
 
-   I am using XlsxWriter and I have encountered a problem. I want it to do
-   SOMETHING but the module appears to do SOMETHING ELSE.
+A sample bug report is shown below. This format helps to analyse and respond to
+the bug report more quickly.
+
+   **Issue with SOMETHING**
+
+   I am using XlsxWriter to do SOMETHING but it appears to do SOMETHING ELSE.
 
    I am using Python version X.Y.Z and XlsxWriter x.y.z.
 
    Here is some code that demonstrates the problem::
 
-       from xlsxwriter.workbook import Workbook
+       import xlsxwriter
 
-       workbook = Workbook('hello.xlsx')
+       workbook = xlsxwriter.Workbook('hello.xlsx')
        worksheet = workbook.add_worksheet()
 
        worksheet.write('A1', 'Hello world')
 
        workbook.close()
-
-
 
 

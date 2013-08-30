@@ -11,9 +11,25 @@ import datetime
 import tempfile
 import codecs
 import os
-from warnings import warn
-from collections import defaultdict
-from collections import namedtuple
+import sys
+from decimal import Decimal
+
+try:
+    # For Python 2.6+.
+    from fractions import Fraction
+    from warnings import warn
+except ImportError:
+    Fraction = float
+    Decimal = float
+
+try:
+    # For Python 2.6+.
+    from collections import defaultdict
+    from collections import namedtuple
+except ImportError:
+    # For Python 2.5 support.
+    from .compat_collections import defaultdict
+    from .compat_collections import namedtuple
 
 # For compatibility between Python 2 and 3.
 try:
@@ -125,6 +141,7 @@ def convert_column_args(method):
 cell_string_tuple = namedtuple('String', 'string, format')
 cell_number_tuple = namedtuple('Number', 'number, format')
 cell_blank_tuple = namedtuple('Blank', 'format')
+cell_boolean_tuple = namedtuple('Boolean', 'boolean, format')
 cell_formula_tuple = namedtuple('Formula', 'formula, format, value')
 cell_arformula_tuple = namedtuple('ArrayFormula',
                                   'formula, format, value, range')
@@ -307,6 +324,13 @@ class Worksheet(xmlwriter.XMLwriter):
         self.epoch = datetime.datetime(1899, 12, 31)
         self.hyperlinks = defaultdict(dict)
 
+        self.strings_to_numbers = False
+        self.strings_to_urls = True
+        self.strings_to_formulas = True
+
+        self.default_date_format = None
+        self.default_url_format = None
+
     @convert_cell_args
     def write(self, row, col, *args):
         """
@@ -314,11 +338,9 @@ class Worksheet(xmlwriter.XMLwriter):
         method based on the type of data being passed.
 
         Args:
-            row:     The cell row (zero indexed).
-            col:     The cell column (zero indexed).
-            token:   Cell data.
-            format:  An optional cell Format object.
-            options: Any options to pass to sub function.
+            row:   The cell row (zero indexed).
+            col:   The cell column (zero indexed).
+            *args: Args to pass to sub functions.
 
         Returns:
              0:    Success.
@@ -333,37 +355,79 @@ class Worksheet(xmlwriter.XMLwriter):
         # The first arg should be the token for all write calls.
         token = args[0]
 
-        # Convert None to an empty string and thus a blank cell.
-        if token is None:
-            token = ''
+        # Types to check in Python 2/3.
+        if sys.version_info[0] == 2:
+            num_types = (float, int, long, Decimal, Fraction)
+            str_types = basestring
+            date_types = (datetime.datetime, datetime.date, datetime.time)
+        else:
+            num_types = (float, int, Decimal, Fraction)
+            str_types = str
+            date_types = (datetime.datetime, datetime.date, datetime.time)
 
-        # Check for a datetime object.
-        if self._is_supported_datetime(token):
+        # Write None as a blank cell.
+        if token is None:
+            return self.write_blank(row, col, *args)
+
+        # Write boolean types.
+        if isinstance(token, bool):
+            return self.write_boolean(row, col, *args)
+
+        # Write datetime objects.
+        if isinstance(token, date_types):
             return self.write_datetime(row, col, *args)
 
-        # Then check if the token to write is a number.
-        try:
-            float(token)
+        # Write number types.
+        if isinstance(token, num_types):
             return self.write_number(row, col, *args)
+
+        # Write string types.
+        if isinstance(token, str_types):
+            # Map the data to the appropriate write_*() method.
+            if token == '':
+                return self.write_blank(row, col, *args)
+
+            elif self.strings_to_formulas and token.startswith('='):
+                return self.write_formula(row, col, *args)
+
+            elif self.strings_to_urls and re.match('(ftp|http)s?://', token):
+                return self.write_url(row, col, *args)
+
+            elif self.strings_to_urls and re.match('mailto:', token):
+                return self.write_url(row, col, *args)
+
+            elif self.strings_to_urls and re.match('(in|ex)ternal:', token):
+                return self.write_url(row, col, *args)
+
+            elif self.strings_to_numbers:
+                try:
+                    f = float(token)
+                    if not self._isnan(f) and not self._isinf(f):
+                        return self.write_number(row, col, f, *args[1:])
+                except ValueError:
+                    # Not a number, write as a string.
+                    pass
+
+                return self.write_string(row, col, *args)
+
+            else:
+                # We have a plain string.
+                return self.write_string(row, col, *args)
+
+        # We haven't matched a supported type. Try float.
+        try:
+            f = float(token)
+            if not self._isnan(f) and not self._isinf(f):
+                return self.write_number(row, col, f, *args[1:])
         except ValueError:
-            # Not a number. Continue to the checks below.
             pass
 
-        # Map the data to the appropriate write_*() method.
-        if token == '':
-            return self.write_blank(row, col, *args)
-        elif token.startswith('='):
-            return self.write_formula(row, col, *args)
-        elif token.startswith('{') and token.endswith('}'):
-            return self.write_formula(row, col, *args)
-        elif re.match('[fh]tt?ps?://', token):
-            return self.write_url(row, col, *args)
-        elif re.match('mailto:', token):
-            return self.write_url(row, col, *args)
-        elif re.match('(in|ex)ternal:', token):
-            return self.write_url(row, col, *args)
-        else:
+        # Finally try string.
+        try:
+            str(token)
             return self.write_string(row, col, *args)
+        except ValueError:
+            raise TypeError("Unsupported type %s in write()" % type(token))
 
     @convert_cell_args
     def write_string(self, row, col, string, cell_format=None):
@@ -424,7 +488,8 @@ class Worksheet(xmlwriter.XMLwriter):
             -1: Row or column is out of worksheet bounds.
 
         """
-        number = float(number)
+        if self._isnan(number) or self._isinf(number):
+            raise TypeError("NAN/INF not supported in write_number()")
 
         # Check that row and col are valid and store max and min values.
         if self._check_dimensions(row, col):
@@ -578,7 +643,7 @@ class Worksheet(xmlwriter.XMLwriter):
         return 0
 
     @convert_cell_args
-    def write_datetime(self, row, col, date, cell_format):
+    def write_datetime(self, row, col, date, cell_format=None):
         """
         Write a date or time to a worksheet cell.
 
@@ -604,8 +669,46 @@ class Worksheet(xmlwriter.XMLwriter):
         # Convert datetime to an Excel date.
         number = self._convert_date_time(date)
 
+        # Add the default date format.
+        if cell_format is None:
+            cell_format = self.default_date_format
+
         # Store the cell data in the worksheet data table.
         self.table[row][col] = cell_number_tuple(number, cell_format)
+
+        return 0
+
+    @convert_cell_args
+    def write_boolean(self, row, col, boolean, cell_format=None):
+        """
+        Write a boolean value to a worksheet cell.
+
+        Args:
+            row:         The cell row (zero indexed).
+            col:         The cell column (zero indexed).
+            boolean:     Cell data. bool type.
+            cell_format: An optional cell Format object.
+
+        Returns:
+            0:  Success.
+            -1: Row or column is out of worksheet bounds.
+
+        """
+        # Check that row and col are valid and store max and min values.
+        if self._check_dimensions(row, col):
+            return -1
+
+        # Write previous row if in in-line string optimization mode.
+        if self.optimization and row > self.previous_row:
+            self._write_single_row(row)
+
+        if boolean:
+            value = 1
+        else:
+            value = 0
+
+        # Store the cell data in the worksheet data table.
+        self.table[row][col] = cell_boolean_tuple(value, cell_format)
 
         return 0
 
@@ -736,6 +839,10 @@ class Worksheet(xmlwriter.XMLwriter):
         # Write previous row if in in-line string optimization mode.
         if self.optimization == 1 and row > self.previous_row:
             self._write_single_row(row)
+
+        # Add the default URL format.
+        if cell_format is None:
+            cell_format = self.default_url_format
 
         # Write the hyperlink string.
         self.write_string(row, col, string, cell_format)
@@ -1236,6 +1343,9 @@ class Worksheet(xmlwriter.XMLwriter):
 
         # Store the row change to allow optimisations.
         self.row_size_changed = 1
+
+        if hidden:
+            height = 0
 
         # Store the row sizes for use when calculating image vertices.
         self.row_sizes[row] = height
@@ -1866,7 +1976,7 @@ class Worksheet(xmlwriter.XMLwriter):
             elif options['criteria'] == 'last7Days':
                 options['formula'] = \
                     ('AND(TODAY()-FLOOR(%s,1)<=6,FLOOR(%s,1)<=TODAY())' %
-                    (start_cell, start_cell))
+                     (start_cell, start_cell))
 
             elif options['criteria'] == 'lastWeek':
                 options['formula'] = \
@@ -1895,7 +2005,7 @@ class Worksheet(xmlwriter.XMLwriter):
             elif options['criteria'] == 'thisMonth':
                 options['formula'] = \
                     ('AND(MONTH(%s)=MONTH(TODAY()),YEAR(%s)=YEAR(TODAY()))' %
-                    (start_cell, start_cell))
+                     (start_cell, start_cell))
 
             elif options['criteria'] == 'continueMonth':
                 options['formula'] = \
@@ -2999,6 +3109,11 @@ class Worksheet(xmlwriter.XMLwriter):
         self.optimization = init_data['optimization']
         self.tmpdir = init_data['tmpdir']
         self.date_1904 = init_data['date_1904']
+        self.strings_to_numbers = init_data['strings_to_numbers']
+        self.strings_to_formulas = init_data['strings_to_formulas']
+        self.strings_to_urls = init_data['strings_to_urls']
+        self.default_date_format = init_data['default_date_format']
+        self.default_url_format = init_data['default_url_format']
 
         if self.date_1904:
             self.epoch = datetime.datetime(1904, 1, 1)
@@ -3153,7 +3268,7 @@ class Worksheet(xmlwriter.XMLwriter):
         delta = dt_obj - self.epoch
         excel_time = (delta.days
                       + (float(delta.seconds)
-                      + float(delta.microseconds) / 1E6)
+                         + float(delta.microseconds) / 1E6)
                       / (60 * 60 * 24))
 
         # Special case for datetime where time only has been specified and
@@ -3634,7 +3749,7 @@ class Worksheet(xmlwriter.XMLwriter):
 
         # Calculate the absolute x offset of the top-left vertex.
         if self.col_size_changed:
-            for col_id in range(1, col_start + 1):
+            for col_id in range(col_start):
                 x_abs += self._size_col(col_id)
         else:
             # Optimisation for when the column widths haven't changed.
@@ -3645,7 +3760,7 @@ class Worksheet(xmlwriter.XMLwriter):
         # Calculate the absolute y offset of the top-left vertex.
         # Store the column change to allow optimisations.
         if self.row_size_changed:
-            for row_id in range(1, row_start + 1):
+            for row_id in range(row_start):
                 y_abs += self._size_row(row_id)
         else:
             # Optimisation for when the row heights haven't changed.
@@ -3698,7 +3813,7 @@ class Worksheet(xmlwriter.XMLwriter):
         pixels = 0
 
         # Look up the cell value to see if it has been changed.
-        if col in self.col_sizes:
+        if col in self.col_sizes and self.col_sizes[col] is not None:
             width = self.col_sizes[col]
 
             # Convert to pixels.
@@ -3899,9 +4014,9 @@ class Worksheet(xmlwriter.XMLwriter):
 
     def _is_supported_datetime(self, dt):
         # Determine is an argument is a supported datetime object.
-        return(isinstance(dt, datetime.datetime) or
-               isinstance(dt, datetime.date) or
-               isinstance(dt, datetime.time))
+        return(isinstance(dt, (datetime.datetime,
+                               datetime.date,
+                               datetime.time)))
 
     def _table_function_to_formula(self, function, col_name):
         # Convert a table total function to a worksheet formula.
@@ -4077,6 +4192,14 @@ class Worksheet(xmlwriter.XMLwriter):
             color = color[1:]
 
         return "FF" + color.upper()
+
+    def _isnan(self, x):
+        # Workaround for lack of math.isnan in Python 2.5/Jython.
+        return x != x
+
+    def _isinf(self, x):
+        # Workaround for lack of math.isinf in Python 2.5/Jython.
+        return (x - x) != 0
 
     ###########################################################################
     #
@@ -4610,9 +4733,9 @@ class Worksheet(xmlwriter.XMLwriter):
         else:
             self._xml_start_tag_unencoded('row', attributes)
 
-    def _write_empty_row(self, *args):
+    def _write_empty_row(self, row, spans, properties=None):
         # Write and empty <row> element.
-        self._write_row(*args, empty_row=True)
+        self._write_row(row, spans, properties, empty_row=True)
 
     def _write_cell(self, row, col, cell):
         # Write the <cell> element.
@@ -4694,6 +4817,13 @@ class Worksheet(xmlwriter.XMLwriter):
         elif type(cell).__name__ == 'Blank':
             # Write a empty cell.
             self._xml_empty_tag('c', attributes)
+
+        elif type(cell).__name__ == 'Boolean':
+            # Write a boolean cell.
+            attributes.append(('t', 'b'))
+            self._xml_start_tag('c', attributes)
+            self._write_cell_value(cell.boolean)
+            self._xml_end_tag('c')
 
     def _write_cell_value(self, value):
         # Write the cell value <v> element.
